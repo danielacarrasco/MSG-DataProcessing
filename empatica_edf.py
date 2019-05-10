@@ -30,7 +30,7 @@ def encodeIntEDF(data, channelInfo, sampleRate=75, dataType='int16'):
                           np.clip(data[~np.isnan(data[:,c]),c], digMin, digMax)
     data = data.astype(np.dtype(dataType))
     data[np.isnan(data)] = digMin - 1
-    data = data.reshape(-1, sampleRate, channels)
+    data = data.reshape(-1, int(sampleRate), channels)
     data = np.transpose(data, (0, 2, 1))
     data = data.tostring(order='C')
     return data
@@ -197,7 +197,7 @@ while(data_ac.shape[0] % int(data_acc[0][1]) != 0):
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_ac, 'Acc', 'g' , sampleRate=int(data_acc[0][1]), units=None, 
+           data_ac, 'Acc', 'g' , sampleRate=(data_acc[0][1]), units=None, 
            edfType='int')
 
 
@@ -209,7 +209,7 @@ while(data_b.shape[0] % int(data_bvp[0][1]) != 0):
     
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_b, 'BVP', 'XXXX', sampleRate=int(data_bvp[0][1]), units=None, 
+           data_b, 'BVP', 'XXXX', sampleRate=(data_bvp[0][1]), units=None, 
            edfType='int')
 
 
@@ -221,7 +221,7 @@ while(data_e.shape[0] % int(data_eda[0][1]) != 0):
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_e, 'EDA', 'XXXX', sampleRate=int(data_eda[0][1]), units=None, 
+           data_e, 'EDA', 'XXXX', sampleRate=(data_eda[0][1]), units=None, 
            edfType='int')
 
 
@@ -233,7 +233,7 @@ while(data_hrate.shape[0] % int(data_hr[0][1]) != 0):
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_hrate, 'HR', 'XXXX', sampleRate=int(data_hr[0][1]), 
+           data_hrate, 'HR', 'XXXX', sampleRate=(data_hr[0][1]), 
            units=None, edfType='int')
 
 
@@ -245,5 +245,5 @@ while(data_t.shape[0] % int(data_temp[0][1]) != 0):
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_t, 'Temperature', 'deg C', sampleRate=int(data_temp[0][1]), 
+           data_t, 'Temperature', 'deg C', sampleRate=(data_temp[0][1]), 
            units=None, edfType='int')
