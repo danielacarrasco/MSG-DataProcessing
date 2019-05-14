@@ -2,13 +2,12 @@ import numpy as np
 import pandas as pd
 import os
 import pyedflib
-from scipy import signal
 
 
 # Path to the files for processing.
-loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt26_MO/Session2/'
+loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/'
 # Path where the folder (edf/) with the EDF files will be saved. 
-savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt26_MO/Session2/'
+savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/'
 
 time_offset = 0  # Time offset in seconds.
 t_offset = pd.DateOffset(seconds=time_offset)
@@ -26,13 +25,18 @@ def encodeIntEDF(data, channelInfo, sampleRate=75, dataType='int16'):
         with np.errstate(divide='ignore', invalid='ignore'):
             data[~np.isnan(data[:,c]),c] = (data[~np.isnan(data[:, c]), c] - 
                 chanMin) / chanDiff * digDiff + digMin
-            data[~np.isnan(data[:,c]),c] = 
-                          np.clip(data[~np.isnan(data[:,c]),c], digMin, digMax)
+            data[~np.isnan(data[:,c]),c] = np.clip(data[~np.isnan
+                 (data[:,c]),c], digMin, digMax)
     data = data.astype(np.dtype(dataType))
     data[np.isnan(data)] = digMin - 1
+    print('data shape', data.shape)
     data = data.reshape(-1, int(sampleRate), channels)
+    #data = data.reshape(int(data.shape[0]/sampleRate),-1,channels)
+    print('data shape', data.shape)
     data = np.transpose(data, (0, 2, 1))
+    print('data shape', data.shape)
     data = data.tostring(order='C')
+    print(len(data))
     return data
 
 def encodeEDF(data, sampleRate=75, dataType='float32'):
@@ -71,7 +75,7 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
         cName = str(channelNames[c])
         print(cName)
         transducer = cGroup
-        #unit = 'V'
+        x = np.asarray(df.iloc[:,c])
         exponent = 1
         newData[:,c] = np.asarray(df.iloc[:,c].copy()) * exponent
         if edfType == 'int':
@@ -90,12 +94,13 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
                                      transducer=transducer)
         
         channelInfo.append(ch_dict)
+        dataList.append(x)
     if 'f' in locals():
         f.close()
         del f
     
     fileName = fName + '/edf/' + studyTimeStr + '_' + cGroup + '.edf'
-    
+
     f = pyedflib.EdfWriter(fileName, len(channelNames), 
                            file_type=pyedflib.FILETYPE_EDF)
     f.setStartdatetime(startDateTime)
@@ -103,12 +108,13 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
     f.setGender('')
     f.setPatientName(pat)
     f.setSignalHeaders(channelInfo)
+    f.writeSamples(dataList)
     #print(newData)
     print(newData.shape)
     f.close()
     del f
-    if edfType == 'int':
-        newData = encodeIntEDF(newData, channelInfo, sampleRate)
+    #if edfType == 'int':
+    #    newData = encodeIntEDF(newData, channelInfo, sampleRate)
 
 
     with open(fileName, 'r+') as f:
@@ -186,14 +192,16 @@ data_t.index = t_index + t_offset
 data_t.rename(columns={0:"T"}, inplace=True)
 
 
+data_acc[0][1] = data_acc[0][1]*1.00001 # Test for non-integer
+
 if not os.path.exists(savePath + '/edf'):
     os.makedirs(savePath + '/edf')
 
 studyDateTime = data_ac.index[0]
 
-while(data_ac.shape[0] % int(data_acc[0][1]) != 0):
-    cuoc = data_ac.shape[0] % int(data_acc[0][1])
-    data_ac.drop(data_ac.tail(cuoc).index,inplace=True)
+#while(data_ac.shape[0] % (data_acc[0][1]) != 0):
+#    cuoc = data_ac.shape[0] % (data_acc[0][1])
+#    data_ac.drop(data_ac.tail(cuoc).index,inplace=True)
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
@@ -203,9 +211,9 @@ makeEdf(savePath,
 
 studyDateTime = data_b.index[0]
 
-while(data_b.shape[0] % int(data_bvp[0][1]) != 0):
-    cuoc = data_b.shape[0] % int(data_bvp[0][1])
-    data_b.drop(data_b.tail(cuoc).index,inplace=True)
+#while(data_b.shape[0] % int(data_bvp[0][1]) != 0):
+#    cuoc = data_b.shape[0] % int(data_bvp[0][1])
+#    data_b.drop(data_b.tail(cuoc).index,inplace=True)
     
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
@@ -215,9 +223,9 @@ makeEdf(savePath,
 
 studyDateTime = data_e.index[0]
 
-while(data_e.shape[0] % int(data_eda[0][1]) != 0):
-    cuoc = data_e.shape[0] % int(data_eda[0][1])
-    data_e.drop(data_e.tail(cuoc).index,inplace=True)
+#while(data_e.shape[0] % int(data_eda[0][1]) != 0):
+#    cuoc = data_e.shape[0] % int(data_eda[0][1])
+#    data_e.drop(data_e.tail(cuoc).index,inplace=True)
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
@@ -227,9 +235,9 @@ makeEdf(savePath,
 
 studyDateTime = data_hrate.index[0]
 
-while(data_hrate.shape[0] % int(data_hr[0][1]) != 0):
-    cuoc = data_hrate.shape[0] % int(data_hr[0][1])
-    data_hrate.drop(data_hrate.tail(cuoc).index,inplace=True)
+#while(data_hrate.shape[0] % int(data_hr[0][1]) != 0):
+#    cuoc = data_hrate.shape[0] % int(data_hr[0][1])
+#    data_hrate.drop(data_hrate.tail(cuoc).index,inplace=True)
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
@@ -239,9 +247,9 @@ makeEdf(savePath,
 
 studyDateTime = data_t.index[0]
 
-while(data_t.shape[0] % int(data_temp[0][1]) != 0):
-    cuoc = data_t.shape[0] % int(data_temp[0][1])
-    data_t.drop(data_t.tail(cuoc).index,inplace=True)
+#while(data_t.shape[0] % int(data_temp[0][1]) != 0):
+ #   cuoc = data_t.shape[0] % int(data_temp[0][1])
+  #  data_t.drop(data_t.tail(cuoc).index,inplace=True)
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
