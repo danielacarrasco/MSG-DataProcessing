@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 import pyedflib
-
+import scipy.signal
 
 # Path to the files for processing.
 loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/mona/'
@@ -64,6 +64,8 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
         f.close()
         del f
     
+    #newData = scipy.signal.resample(newData,len(newData)*32.003/32.0)
+    
     fileName = fName + '/edf/' + studyTimeStr + '_' + cGroup + '.edf'
 
     f = pyedflib.EdfWriter(fileName, len(channelNames), 
@@ -74,8 +76,8 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
     f.setPatientName(pat)
     f.setSignalHeaders(channelInfo)
     for i in range(len(channelNames)):
-       f.setSamplefrequency(i,int(sampleRate*10))
-    f.setDatarecordDuration(10*100000)
+       f.setSamplefrequency(i,1000)
+    f.setDatarecordDuration((1000*1./sampleRate)*100000)
     f.writeSamples(dataList)
     #print(newData)
     f.close()
@@ -113,7 +115,6 @@ data_ac.rename(columns={0:"Acc x", 1:"Acc y", 2:"Acc z"}, inplace=True)
 data_ac['Acc Mag'] = np.sqrt(data_ac['Acc x']*data_ac['Acc x'] +
                       data_ac['Acc y']*data_ac['Acc y'] +
                       data_ac['Acc z']*data_ac['Acc z']) - 1
-      
        
 data_bvp = pd.read_csv(loadPath+'BVP.csv',header=None)
 t0 = pd.to_datetime(data_bvp[0][0], unit="s")
