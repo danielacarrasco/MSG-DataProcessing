@@ -5,9 +5,9 @@ import pyedflib
 import scipy.signal
 
 # Path to the files for processing.
-loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/mona/'
+loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/'
 # Path where the folder (edf/) with the EDF files will be saved. 
-savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/mona/'
+savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/'
 
 time_offset = 0  # Time offset in seconds.
 t_offset = pd.DateOffset(seconds=time_offset)
@@ -64,8 +64,6 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
         f.close()
         del f
     
-    #newData = scipy.signal.resample(newData,len(newData)*32.003/32.0)
-    
     fileName = fName + '/edf/' + studyTimeStr + '_' + cGroup + '.edf'
 
     f = pyedflib.EdfWriter(fileName, len(channelNames), 
@@ -75,22 +73,17 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
     f.setGender('')
     f.setPatientName(pat)
     f.setSignalHeaders(channelInfo)
+    new_rate = 100 # Dummy rate to enter the loop
+    c = 0.1
+    while new_rate > 60:
+        c = c * 10
+        new_rate = (1000/c)*1./sampleRate
     for i in range(len(channelNames)):
-       f.setSamplefrequency(i,1000)
-    f.setDatarecordDuration((1000*1./sampleRate)*100000)
+        f.setSamplefrequency(i,1000/c)
+    f.setDatarecordDuration(new_rate*100000)
     f.writeSamples(dataList)
-    #print(newData)
     f.close()
     del f
-    #if edfType == 'int':
-    #    newData = encodeIntEDF(newData, channelInfo, sampleRate)
-
-    #with open(fileName, 'r+') as f:
-     #   f.seek(236)
-      #  f.write(dataRecords)
-    #with open(fileName, 'rb+') as f:
-     #   f.seek(0, 2)
-      #  f.write(newData)
 
 
 studyTimeStr = os.path.splitext(os.path.basename(loadPath))[0]
@@ -100,9 +93,7 @@ channelNames = ['Acc x','Acc y','Acc z','BVP','EDA','HR','IBI','T']
 data_acc = pd.read_csv(loadPath+'ACC.csv',header=None)
 t0 = pd.to_datetime(data_acc[0][0], unit="s")
 f = 1./data_acc[0][1]
-print(data_acc[0][1])
 f = int(f*1e9)
-print(f)
 
 t_index = pd.Series(pd.date_range(t0,periods=len(data_acc)-2, freq=str(f)+'N'))
 t_index = t_index.dt.tz_localize('UTC').dt.tz_convert('Australia/Melbourne')
@@ -186,6 +177,8 @@ makeEdf(savePath,
            units=None, edfType='int')
 
 
+print(data_acc[0][1])
+
 studyDateTime = data_b.index[0]
     
 makeEdf(savePath, 
@@ -194,6 +187,8 @@ makeEdf(savePath,
            edfType='int')
 
 
+print(data_bvp[0][1])
+
 studyDateTime = data_e.index[0]
 
 makeEdf(savePath, 
@@ -201,6 +196,7 @@ makeEdf(savePath,
            data_e, 'EDA', 'XXXX', sampleRate=(data_eda[0][1]), units=None, 
            edfType='int')
 
+print(data_eda[0][1])
 
 studyDateTime = data_hrate.index[0]
 makeEdf(savePath, 
@@ -208,6 +204,7 @@ makeEdf(savePath,
            data_hrate, 'HR', 'XXXX', sampleRate=(data_hr[0][1]), 
            units=None, edfType='int')
 
+print(data_hr[0][1])
 
 studyDateTime = data_t.index[0]
 
@@ -215,3 +212,6 @@ makeEdf(savePath,
            savePath.split('/')[-1], studyDateTime, 
            data_t, 'Temperature', 'deg C', sampleRate=(data_temp[0][1]), 
            units=None, edfType='int')
+
+
+print(data_temp[0][1])
