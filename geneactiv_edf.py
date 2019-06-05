@@ -17,36 +17,7 @@ device_n = '050716'
 time_offset = 0  # Time offset in seconds.
 t_offset = pd.DateOffset(seconds=time_offset)
 
-def encodeIntEDF(data, channelInfo, sampleRate=100, dataType='int16'):
-
-    channels = data.shape[1]    
-    for c in range(channels):
-        chanMin = channelInfo[c]['physical_min']
-        chanMax = channelInfo[c]['physical_max']
-        chanDiff = chanMax - chanMin
-        digMin = channelInfo[c]['digital_min'] + 1
-        digMax = channelInfo[c]['digital_max']
-        digDiff = abs(digMin) + abs(digMax)
-        with np.errstate(divide='ignore', invalid='ignore'):
-            data[~np.isnan(data[:,c]),c] = (data[~np.isnan(data[:, c]), c] - 
-                chanMin) / chanDiff * digDiff + digMin
-            data[~np.isnan(data[:,c]),c] = 
-                        np.clip(data[~np.isnan(data[:, c]), c], digMin, digMax)
-    data = data.astype(np.dtype(dataType))
-    data[np.isnan(data)] = digMin - 1
-    data = data.reshape(-1, sampleRate, channels)
-    data = np.transpose(data, (0, 2, 1))
-    data = data.tostring(order='C')
-    return data
-
-def encodeEDF(data, sampleRate=100, dataType='float32'):
-
-    channels = data.shape[1]
-    data = data.astype(np.dtype(dataType))
-    data = data.reshape(-1, sampleRate, channels)
-    data = np.transpose(data, (0, 2, 1))
-    data = data.tostring(order='C')
-    return data
+sampleRate = 100.0 # Sample rate including correction
 
 def makeChannelHeaders(label, unit=None, sampleRate=100.0,
                         physicalMax=10, physicalMin=-10,
@@ -75,8 +46,8 @@ def makeEdf(fName, pat, startDateTime, df, device, cGroup, unit,
         cName = str(channelNames[c])
         print(cName)
         transducer = cGroup
+        x = np.asarray(df.iloc[:,c])
         exponent = 1
-        
         newData[:,c] = np.asarray(df.iloc[:,c].copy()) * exponent
         
         if edfType == 'int':
@@ -95,6 +66,7 @@ def makeEdf(fName, pat, startDateTime, df, device, cGroup, unit,
                                      transducer=transducer)
         
         channelInfo.append(ch_dict)
+        dataList.append(x)
     if 'f' in locals():
         f.close()
         del f
@@ -108,26 +80,23 @@ def makeEdf(fName, pat, startDateTime, df, device, cGroup, unit,
     f.setGender('')
     f.setPatientName(pat)
     f.setSignalHeaders(channelInfo)
-    print(newData)
-    print(newData.shape)
+    new_rate = 100 # Dummy rate to enter the loop
+    c = 0.1
+    while new_rate > 60:
+        c = c * 10
+        new_rate = (1000/c)*1./sampleRate
+    for i in range(len(channelNames)):
+        f.setSamplefrequency(i,1000/c)
+    f.setDatarecordDuration(new_rate*100000)
+    f.writeSamples(dataList)
     f.close()
     del f
-    if edfType == 'int':
-        newData = encodeIntEDF(newData, channelInfo, sampleRate=100)
-
-    with open(fileName, 'r+') as f:
-        f.seek(236)
-        f.write(dataRecords)
-    with open(fileName, 'rb+') as f:
-        f.seek(0, 2)
-        f.write(newData)
 
     
-
 studyTimeStr = os.path.splitext(os.path.basename(loadPath))[0]
 
 
-data = pd.read_csv(loadPath,skiprows=100,header=None,index_col=0)
+data = pd.read_csv(loadPath, skiprows=100, header=None, index_col=0)
 data.index = pd.to_datetime(data.index, format="%Y-%m-%d %H:%M:%S:%f") + t_offset
 
 
@@ -144,8 +113,7 @@ if not os.path.exists(savePath + '/edf'):
 
 print(data.index[0])
 
-studyDateTime =data.index[0]
-offsetTime = datetime.timedelta()
+studyDateTime = data.index[0] + t_offset
 
 
 data_acc =  pd.DataFrame(pd.concat([data['Acc x'], data['Acc y'], 
@@ -159,18 +127,17 @@ data_light = pd.DataFrame(pd.concat([data['Light level'].astype(float)],axis=1))
 
 data_t = pd.DataFrame(pd.concat([data['T']],axis=1))
 
-
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_light, device_n, 'Light Level', 'lux' , sampleRate=100, 
+           data_light, device_n, 'Light Level', 'lux' , sampleRate, 
            units=None, edfType='int')
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_t, device_n, 'Temperature', 'deg C', sampleRate=100, 
+           data_t, device_n, 'Temperature', 'deg C', sampleRate, 
            units=None, edfType='int')
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_acc, device_n, 'Acceleration', 'g', sampleRate=100, units=None, 
+           data_acc, device_n, 'Acceleration', 'g', sampleRate, units=None, 
            edfType='int')
