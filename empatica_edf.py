@@ -43,6 +43,7 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
         x = np.asarray(df.iloc[:,c])
         exponent = 1
         newData[:,c] = np.asarray(df.iloc[:,c].copy()) * exponent
+        
         if edfType == 'int':
             lowerBound = np.min(df.min())
             upperBound = np.max(df.max())
