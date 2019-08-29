@@ -5,13 +5,22 @@ import pyedflib
 import scipy.signal
 
 # Path to the files for processing.
-loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/'
+loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt37_CT/Session2/'
 # Path where the folder (edf/) with the EDF files will be saved. 
-savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt_test/'
+savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt37_CT/Session2/'
 
 time_offset = 0  # Time offset in seconds.
 t_offset = pd.DateOffset(seconds=time_offset)
 
+# Sample rates for Empatica measurements.
+# Zero means the device (default) sample rate will be used.
+sr_acc = 0
+sr_bvp = 0
+sr_eda = 0
+sr_hr = 0
+sr_temp = 0
+
+print("Patient "+ savePath.split('/')[-3], savePath.split('/')[-2])
 
 def makeChannelHeaders(label, unit=None, sampleRate=75.0,
                         physicalMax=10, physicalMin=-10,
@@ -27,7 +36,7 @@ def makeChannelHeaders(label, unit=None, sampleRate=75.0,
     return ch_dict
 
 def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate, 
-            units=None, edfType='int'):
+            units=None, edfType='float32'):
     channelInfo = []
     dataList = []
     channelNames = df.columns.values.tolist()
@@ -49,8 +58,9 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
             upperBound = np.max(df.max())
 
         else:
-            lowerBound = 0
-            upperBound = 0
+            lowerBound = np.min(df.min())
+            upperBound = np.max(df.max())
+
         
         ch_dict = makeChannelHeaders(cName,
                                      unit=unit,
@@ -65,7 +75,7 @@ def makeEdf(fName, pat, startDateTime, df, cGroup, unit, sampleRate,
         f.close()
         del f
     
-    fileName = fName + '/edf/' + studyTimeStr + '_' + cGroup + '.edf'
+    fileName = fName + '/edf_upload/' + pat + studyTimeStr + '_' + cGroup + '.edf'
 
     f = pyedflib.EdfWriter(fileName, len(channelNames), 
                            file_type=pyedflib.FILETYPE_EDF)
@@ -91,9 +101,12 @@ studyTimeStr = os.path.splitext(os.path.basename(loadPath))[0]
 
 channelNames = ['Acc x','Acc y','Acc z','BVP','EDA','HR','IBI','T']
 
+
 data_acc = pd.read_csv(loadPath+'ACC.csv',header=None)
 t0 = pd.to_datetime(data_acc[0][0], unit="s")
-f = 1./data_acc[0][1]
+if sr_acc == 0:
+    sr_acc = data_acc[0][1]
+f = 1./sr_acc
 f = int(f*1e9)
 
 t_index = pd.Series(pd.date_range(t0,periods=len(data_acc)-2, freq=str(f)+'N'))
@@ -110,7 +123,9 @@ data_ac['Acc Mag'] = np.sqrt(data_ac['Acc x']*data_ac['Acc x'] +
        
 data_bvp = pd.read_csv(loadPath+'BVP.csv',header=None)
 t0 = pd.to_datetime(data_bvp[0][0], unit="s")
-f = 1./data_bvp[0][1]
+if sr_bvp == 0:
+    sr_bvp = data_bvp[0][1]
+f = 1./sr_bvp
 f = int(f*1e9)
 
 t_index = pd.Series(pd.date_range(t0,periods=len(data_bvp)-2, freq=str(f)+'N'))
@@ -124,7 +139,9 @@ data_b.rename(columns={0:"BVP"}, inplace=True)
 
 data_eda = pd.read_csv(loadPath+'EDA.csv',header=None)
 t0 = pd.to_datetime(data_eda[0][0], unit="s")
-f = 1./data_eda[0][1]
+if sr_eda == 0:
+    sr_eda = data_eda[0][1]
+f = 1./sr_eda
 f = int(f*1e9)
 
 t_index = pd.Series(pd.date_range(t0,periods=len(data_eda)-2, freq=str(f)+'N'))
@@ -138,7 +155,9 @@ data_e.rename(columns={0:"EDA"}, inplace=True)
 
 data_hr = pd.read_csv(loadPath+'HR.csv',header=None)
 t0 = pd.to_datetime(data_hr[0][0], unit="s")
-f = 1./data_hr[0][1]
+if sr_hr == 0:
+    sr_hr = data_hr[0][1]
+f = 1./sr_hr
 f = int(f*1e9)
 
 t_index = pd.Series(pd.date_range(t0,periods=len(data_hr)-2, freq=str(f)+'N'))
@@ -152,7 +171,9 @@ data_hrate.rename(columns={0:"HR"}, inplace=True)
 
 data_temp = pd.read_csv(loadPath+'TEMP.csv',header=None)
 t0 = pd.to_datetime(data_temp[0][0], unit="s")
-f = 1./data_temp[0][1]
+if sr_temp == 0:
+    sr_temp = data_temp[0][1]
+f = 1./sr_temp
 f = int(f*1e9)
 
 t_index = pd.Series(pd.date_range(t0,periods=len(data_temp)-2, 
@@ -167,14 +188,16 @@ data_t.rename(columns={0:"T"}, inplace=True)
 
 
 
-if not os.path.exists(savePath + '/edf'):
-    os.makedirs(savePath + '/edf')
+if not os.path.exists(savePath + '/edf_upload'):
+    os.makedirs(savePath + '/edf_upload')
 
 studyDateTime = data_ac.index[0]
 
+
+
 makeEdf(savePath, 
-           savePath.split('/')[-1], studyDateTime, 
-           data_ac, 'Acc', 'g' , sampleRate=(data_acc[0][1]), 
+           savePath.split('/')[-3], studyDateTime, 
+           data_ac, 'Acc', 'g' , sampleRate=(sr_acc), 
            units=None, edfType='int')
 
 
@@ -183,8 +206,8 @@ print(data_acc[0][1])
 studyDateTime = data_b.index[0]
     
 makeEdf(savePath, 
-           savePath.split('/')[-1], studyDateTime, 
-           data_b, 'BVP', 'XXXX', sampleRate=(data_bvp[0][1]), units=None, 
+           savePath.split('/')[-3], studyDateTime, 
+           data_b, 'BVP', 'XXXX', sampleRate=(sr_bvp), units=None, 
            edfType='int')
 
 
@@ -193,16 +216,16 @@ print(data_bvp[0][1])
 studyDateTime = data_e.index[0]
 
 makeEdf(savePath, 
-           savePath.split('/')[-1], studyDateTime, 
-           data_e, 'EDA', 'XXXX', sampleRate=(data_eda[0][1]), units=None, 
+           savePath.split('/')[-3], studyDateTime, 
+           data_e, 'EDA', 'XXXX', sampleRate=(sr_eda), units=None, 
            edfType='int')
 
 print(data_eda[0][1])
 
 studyDateTime = data_hrate.index[0]
 makeEdf(savePath, 
-           savePath.split('/')[-1], studyDateTime, 
-           data_hrate, 'HR', 'XXXX', sampleRate=(data_hr[0][1]), 
+           savePath.split('/')[-3], studyDateTime, 
+           data_hrate, 'HR', 'XXXX', sampleRate=(sr_hr), 
            units=None, edfType='int')
 
 print(data_hr[0][1])
@@ -210,8 +233,8 @@ print(data_hr[0][1])
 studyDateTime = data_t.index[0]
 
 makeEdf(savePath, 
-           savePath.split('/')[-1], studyDateTime, 
-           data_t, 'Temperature', 'deg C', sampleRate=(data_temp[0][1]), 
+           savePath.split('/')[-3], studyDateTime, 
+           data_t, 'Temperature', 'deg C', sampleRate=(sr_temp), 
            units=None, edfType='int')
 
 

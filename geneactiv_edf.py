@@ -1,23 +1,21 @@
 import numpy as np
 import pandas as pd
 import os
-import gc
 import pyedflib
-import datetime
-from scipy import signal
 
 
 # Path to the file for processing, including the name of the .csv file.
-loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt22_CF/'\
-             'Output_Pt22CF.csv'
+loadPath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt35_KDP/'\
+           'Output_Pt35KDP.csv'
 
-savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt22_CF/'
-device_n = '050716'
+savePath = 'C:/Users/danie/Documents/Devices/Patients Data/Pt35_KDP/'
 
 time_offset = 0  # Time offset in seconds.
 t_offset = pd.DateOffset(seconds=time_offset)
 
 sampleRate = 100.0 # Sample rate including correction
+
+print("Patient "+ savePath.split('/')[-2])
 
 def makeChannelHeaders(label, unit=None, sampleRate=100.0,
                         physicalMax=10, physicalMin=-10,
@@ -32,7 +30,7 @@ def makeChannelHeaders(label, unit=None, sampleRate=100.0,
     
     return ch_dict
 
-def makeEdf(fName, pat, startDateTime, df, device, cGroup, unit, 
+def makeEdf(fName, pat, startDateTime, df, cGroup, unit, 
             sampleRate=100.0, units=None, edfType='int'):
     channelInfo = []
     dataList = []
@@ -71,7 +69,7 @@ def makeEdf(fName, pat, startDateTime, df, device, cGroup, unit,
         f.close()
         del f
     
-    fileName = fName + '/edf/' + studyTimeStr + '_' + cGroup + '.edf'
+    fileName = fName + '/edf_upload/' + studyTimeStr + '_' + cGroup + '.edf'
     
     f = pyedflib.EdfWriter(fileName, len(channelNames), 
                            file_type=pyedflib.FILETYPE_EDF)
@@ -108,8 +106,8 @@ data = data.rename(columns={1:channelNames[0],2:channelNames[1],
 
 data = data.drop(columns='Button')
 
-if not os.path.exists(savePath + '/edf'):
-    os.makedirs(savePath + '/edf')
+if not os.path.exists(savePath + '/edf_upload'):
+    os.makedirs(savePath + '/edf_upload')
 
 print(data.index[0])
 
@@ -129,15 +127,17 @@ data_t = pd.DataFrame(pd.concat([data['T']],axis=1))
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_light, device_n, 'Light Level', 'lux' , sampleRate, 
+           data_light, 'Light Level', 'lux' , sampleRate, 
            units=None, edfType='int')
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_t, device_n, 'Temperature', 'deg C', sampleRate, 
+           data_t, 'Temperature', 'deg C', sampleRate, 
            units=None, edfType='int')
 
 makeEdf(savePath, 
            savePath.split('/')[-1], studyDateTime, 
-           data_acc, device_n, 'Acceleration', 'g', sampleRate, units=None, 
+           data_acc, 'Acceleration', 'g', sampleRate, units=None, 
            edfType='int')
+
+
